@@ -21,7 +21,8 @@
     "express": "^4.17.1",
     "express-validator": "^6.9.1",
     "if-env": "^1.0.4",
-    "mongoose": "^5.11.10"
+    "mongoose": "^5.11.10",
+    "multer": "^1.4.2"
   },
   "devDependencies": {
     "concurrently": "^5.3.0",
