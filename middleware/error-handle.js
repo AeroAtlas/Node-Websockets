@@ -5,8 +5,11 @@ exports.ifErr = (err, code = 500) => {
   return error;
 }
 
-exports.throwErr = (msg, code) => {
+exports.throwErr = (msg, code, data) => {
   const error = new Error(msg);
   error.statusCode = code;
+  if(data){
+    error.data = data
+  }
   throw error;
 }
