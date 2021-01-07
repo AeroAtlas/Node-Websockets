@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const {validationResult} = require("express-validator");
 const Post = require("../models/Post");
+const User = require("../models/User");
 const {ifErr, throwErr} = require("../middleware/error-handle");
 
 
@@ -33,11 +34,20 @@ exports.createPost = (req, res, next) => {
   // }
   const imageUrl = req.file.path;
   const {title, content} = req.body;
-  const post = new Post({title, content, imageUrl, creator: {name: "Jeff"}})
+  const post = new Post({title, content, imageUrl, creator: req.userId})
+  let creator;
   post.save()
+    .then(() => {
+      return User.findById(req.userId)
+    })
+    .then(user => {
+      creator = user;
+      user.posts.push(post);
+      return user.save();
+    })
     .then(result => {
-      console.log(result);
-      res.status(201).json({message: "Post created successfully!", post: result});
+      const {_id, name} = creator;
+      res.status(201).json({message: "Post created successfully!", post, creator: {_id, name}});
     })
     .catch(err => next(ifErr(err, err.statusCode)));
 }
@@ -47,7 +57,7 @@ exports.getPost = (req, res, next) => {
   Post.findById(postId)
     .then(post => {
       if (!post) {
-        throwErr("Could not find post", 404)
+        throwErr("Could not find post", 404);
       }
       res.status(200).json({message: "Post fetched.", post});
     })
@@ -73,6 +83,10 @@ exports.updatePost = (req, res, next) => {
       if(!post){
         throwErr("Could not find post", 404)
       }
+      //? Issue where if you change image while not authorized you add new image to images folder. Doesn't affect post
+      if (post.creator.toString() !== req.userId){
+        throwErr("Not authorized", 403);
+      }
       //* If image has been changed delete stored image
       if(imageUrl !== post.imageUrl){
         clearImage(post.imageUrl);
@@ -93,9 +107,19 @@ exports.deletePost = (req,res,next) => {
   Post.findById(postId)
     .then(post => {
       if(!post){ throwErr("Could not find post", 404) }
+      if (post.creator.toString() !== req.userId){
+        throwErr("Not authorized", 403);
+      }
       //Check loggin in user
       clearImage(post.imageUrl);
       return Post.findByIdAndRemove(postId);
+    })
+    .then(() => {
+      return User.findById(req.userId)
+    })
+    .then(user => {
+      user.posts.pull(postId);
+      return user.save()
     })
     .then(result => {
       console.log(result);

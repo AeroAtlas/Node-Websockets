@@ -19,5 +19,6 @@ module.exports = (req, res, next) => {
     throwErr("Not authenticated", 401);
   }
   req.userId = decodedToken.userId;
+  // console.log(req.userId) //* Remove later
   next();
 }
