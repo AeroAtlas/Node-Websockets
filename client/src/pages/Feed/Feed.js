@@ -51,7 +51,11 @@ class Feed extends Component {
       this.setState({ postPage: page });
     }
     //* Pagination added here
-    fetch('http://localhost:8080/feed/posts?page='+ page)
+    fetch('http://localhost:8080/feed/posts?page='+ page, {
+      headers: {
+        Authorization: "Bearer " + this.props.token //bearer is auth token usually for jwt
+      }
+    })
       .then(res => {
         if (res.status !== 200) {
           throw new Error('Failed to fetch posts.');
