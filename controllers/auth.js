@@ -1,5 +1,5 @@
 require("dotenv").config();
-const {validationResult} = require("express-validator");
+const {validationResult} = require('express-validator/check');
 const {ifErr, throwErr} = require("../middleware/error-handle");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");

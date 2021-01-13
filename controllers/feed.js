@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const {validationResult} = require("express-validator");
+const {validationResult} = require('express-validator/check');
 const Post = require("../models/Post");
 const User = require("../models/User");
 const {ifErr, throwErr} = require("../middleware/error-handle");
@@ -10,10 +10,10 @@ const io = require("../socket");
 
 exports.getPosts = async (req, res, next) => {
   const currentPage = req.query.page || 1;
-  const perPage = 2;
+  const perPage = 4;
   try {
     const totalItems = await Post.find().countDocuments();
-    const posts = await Post.find().skip((currentPage - 1) * perPage).limit(perPage);
+    const posts = await Post.find().populate("creator").sort({createdAt: -1}).skip((currentPage - 1) * perPage).limit(perPage);
     res.status(200).json({message: "Fetched posts", posts, totalItems});
   } catch (err){
     next(ifErr(err, err.statusCode));
@@ -37,7 +37,7 @@ exports.createPost = async (req, res, next) => {
     const user = await User.findById(req.userId);
     user.posts.push(post);
     await user.save();
-    io.getIO().emit("posts", {action: "create", post}); //broadcast is all users except sender/ emit is all users
+    io.getIO().emit("posts", {action: "create", post: {...post._doc, creator: {_id: req.userId, name: user.name}}}); //broadcast is all users except sender/ emit is all users
     const {_id, name} = user;
     res.status(201).json({message: "Post created successfully!", post, creator: {_id, name}});
   } catch(err) {
@@ -73,12 +73,12 @@ exports.updatePost = async (req, res, next) => {
   //   throwErr("No file picked", 422);
   // }
   try {
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate("creator");
     if(!post){
       throwErr("Could not find post", 404)
     }
     //? Issue where if you change image while not authorized you add new image to images folder. Doesn't affect post
-    if (post.creator.toString() !== req.userId){
+    if (post.creator._id.toString() !== req.userId){
       throwErr("Not authorized", 403);
     }
     //* If image has been changed delete stored image
@@ -89,6 +89,7 @@ exports.updatePost = async (req, res, next) => {
     post.imageUrl = imageUrl;
     post.content = content;
     const result = await post.save();
+    io.getIO().emit("posts", {action: "update", post: result});
     res.status(200).json({message: "Post updated", post: result});
   } catch (err) {
     next(ifErr(err, err.statusCode));
@@ -109,7 +110,8 @@ exports.deletePost = async (req,res,next) => {
     await Post.findByIdAndRemove(postId);
     const user = await User.findById(req.userId)
     user.posts.pull(postId);
-    await user.save()
+    await user.save();
+    io.getIO().emit("posts", {action: "delete", post: postId});
     res.status(200).json({message: "Deleted post."});
   } catch (err) {
     next(ifErr(err, err.statusCode))
