@@ -4,6 +4,7 @@ const {validationResult} = require("express-validator");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const {ifErr, throwErr} = require("../middleware/error-handle");
+const io = require("../middleware/socket");
 
 //* Can add exec() to the end of all mongoose operations to return a real promise
 
@@ -27,6 +28,7 @@ exports.createPost = async (req, res, next) => {
   // if(!req.file){ //* remove later
   //   throwErr("No image provided", 422);
   // }
+
   const imageUrl = req.file.path;
   const {title, content} = req.body;
   const post = new Post({title, content, imageUrl, creator: req.userId})
@@ -35,6 +37,7 @@ exports.createPost = async (req, res, next) => {
     const user = await User.findById(req.userId);
     user.posts.push(post);
     await user.save();
+    io.getIO().emit("posts", {action: "create", post}); //broadcast is all users except sender/ emit is all users
     const {_id, name} = user;
     res.status(201).json({message: "Post created successfully!", post, creator: {_id, name}});
   } catch(err) {
