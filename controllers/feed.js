@@ -4,7 +4,7 @@ const {validationResult} = require("express-validator");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const {ifErr, throwErr} = require("../middleware/error-handle");
-const io = require("../middleware/socket");
+const io = require("../socket");
 
 //* Can add exec() to the end of all mongoose operations to return a real promise
 

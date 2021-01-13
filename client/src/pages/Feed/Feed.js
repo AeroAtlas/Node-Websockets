@@ -1,5 +1,5 @@
 import React, { Component, Fragment } from 'react';
-import openSocket from "socket.io-client";
+import openSocket from 'socket.io-client';
 
 import Post from '../../components/Feed/Post/Post';
 import Button from '../../components/Button/Button';
@@ -25,7 +25,7 @@ class Feed extends Component {
   componentDidMount() {
     fetch('http://localhost:8080/auth/status', {
       headers: {
-        Authorization: "Bearer " + this.props.token
+        Authorization: 'Bearer ' + this.props.token
       }
     })
       .then(res => {
@@ -40,17 +40,14 @@ class Feed extends Component {
       .catch(this.catchError);
 
     this.loadPosts();
-    //socket.io
-    const socket = openSocket("http://localhost:8080");
-    socket.on("posts", data => {
-      switch(data.action){
-        case "create":
-          this.addPost(data.post);
-          break;
-        default:
-          console.log("none found")
+    const socket = openSocket('http://localhost:8080');
+    socket.on('posts', data => {
+      if (data.action === 'create') {
+        this.addPost(data.post);
+      } else if (data.action === 'update') {
+        this.updatePost(data.post);
       }
-    })
+    });
   }
 
   addPost = post => {
@@ -69,6 +66,19 @@ class Feed extends Component {
     });
   };
 
+  updatePost = post => {
+    this.setState(prevState => {
+      const updatedPosts = [...prevState.posts];
+      const updatedPostIndex = updatedPosts.findIndex(p => p._id === post._id);
+      if (updatedPostIndex > -1) {
+        updatedPosts[updatedPostIndex] = post;
+      }
+      return {
+        posts: updatedPosts
+      };
+    });
+  };
+
   loadPosts = direction => {
     if (direction) {
       this.setState({ postsLoading: true, posts: [] });
@@ -82,10 +92,9 @@ class Feed extends Component {
       page--;
       this.setState({ postPage: page });
     }
-    //* Pagination added here
-    fetch('http://localhost:8080/feed/posts?page='+ page, {
+    fetch('http://localhost:8080/feed/posts?page=' + page, {
       headers: {
-        Authorization: "Bearer " + this.props.token //bearer is auth token usually for jwt
+        Authorization: 'Bearer ' + this.props.token
       }
     })
       .then(res => {
@@ -96,7 +105,12 @@ class Feed extends Component {
       })
       .then(resData => {
         this.setState({
-          posts: resData.posts.map(post => ({...post, imagePath: post.imageUrl})),
+          posts: resData.posts.map(post => {
+            return {
+              ...post,
+              imagePath: post.imageUrl
+            };
+          }),
           totalPosts: resData.totalItems,
           postsLoading: false
         });
@@ -107,12 +121,14 @@ class Feed extends Component {
   statusUpdateHandler = event => {
     event.preventDefault();
     fetch('http://localhost:8080/auth/status', {
-      method: "PATCH",
+      method: 'PATCH',
       headers: {
-        Authorization: "Bearer " + this.props.token, //bearer is auth token usually for jwt
-        "Content-Type": "application/json"
+        Authorization: 'Bearer ' + this.props.token,
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({status: this.state.status})
+      body: JSON.stringify({
+        status: this.state.status
+      })
     })
       .then(res => {
         if (res.status !== 200 && res.status !== 201) {
@@ -149,25 +165,24 @@ class Feed extends Component {
     this.setState({
       editLoading: true
     });
-
-    //Setting up FormData to mix image data with text data
-    const {title, content, image} = postData;
-    const formData = new FormData(); //creating formData
-    formData.append("title", title) 
-    formData.append("content", content)
-    formData.append("image", image)
-
+    const formData = new FormData();
+    formData.append('title', postData.title);
+    formData.append('content', postData.content);
+    formData.append('image', postData.image);
     let url = 'http://localhost:8080/feed/post';
-    let method = "POST"
+    let method = 'POST';
     if (this.state.editPost) {
       url = 'http://localhost:8080/feed/post/' + this.state.editPost._id;
-      method = "PUT";
+      method = 'PUT';
     }
-    
-    //replaced application/json with 
-    fetch(url, {method, body: formData, headers: {
-      Authorization: "Bearer " + this.props.token
-    }})
+
+    fetch(url, {
+      method: method,
+      body: formData,
+      headers: {
+        Authorization: 'Bearer ' + this.props.token
+      }
+    })
       .then(res => {
         if (res.status !== 200 && res.status !== 201) {
           throw new Error('Creating or editing a post failed!');
@@ -175,7 +190,7 @@ class Feed extends Component {
         return res.json();
       })
       .then(resData => {
-        console.log(resData)
+        console.log(resData);
         const post = {
           _id: resData.post._id,
           title: resData.post.title,
@@ -184,18 +199,7 @@ class Feed extends Component {
           createdAt: resData.post.createdAt
         };
         this.setState(prevState => {
-          let updatedPosts = [...prevState.posts];
-          if (prevState.editPost) {
-            const postIndex = prevState.posts.findIndex(
-              p => p._id === prevState.editPost._id
-            );
-            updatedPosts[postIndex] = post;
-          } 
-          // else if (prevState.posts.length < 2) {
-          //   updatedPosts = prevState.posts.concat(post);
-          // }
           return {
-            posts: updatedPosts,
             isEditing: false,
             editPost: null,
             editLoading: false
@@ -219,10 +223,10 @@ class Feed extends Component {
 
   deletePostHandler = postId => {
     this.setState({ postsLoading: true });
-    fetch('http://localhost:8080/feed/post/' + postId, { 
-      method: "DELETE",
+    fetch('http://localhost:8080/feed/post/' + postId, {
+      method: 'DELETE',
       headers: {
-        Authorization: "Bearer " + this.props.token 
+        Authorization: 'Bearer ' + this.props.token
       }
     })
       .then(res => {
