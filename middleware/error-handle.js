@@ -5,7 +5,7 @@ exports.ifErr = (err, code = 500) => {
   return error;
 }
 
-exports.throwErr = (msg, code, data) => {
+exports.throwErr = (msg, code = 500, data) => {
   const error = new Error(msg);
   error.statusCode = code;
   if(data){
